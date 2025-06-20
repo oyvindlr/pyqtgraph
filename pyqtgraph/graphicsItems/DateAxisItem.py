@@ -146,7 +146,7 @@ class TickSpec:
             multiplier = 10 ** np.ceil(np.log10(multiplier))
         # First index in autoskip*multiplier which gives a larger value than minSkipFactor
         index = np.searchsorted(self.autoSkip, minSkipFactor / multiplier)
-        return self.autoSkip[index] * multiplier
+        return int(self.autoSkip[index] * multiplier)
 
 
 class ZoomLevel:
