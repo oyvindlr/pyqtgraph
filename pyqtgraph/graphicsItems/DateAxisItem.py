@@ -8,9 +8,9 @@ import numpy as np
 from ..Qt.QtCore import QDateTime
 from .AxisItem import AxisItem
 
-__all__ = ['DateAxisItem', 'TimeDeltaAxisItem']
+__all__ = ["DateAxisItem", "TimeDeltaAxisItem"]
 
-MS_SPACING = 1/1000.0
+MS_SPACING = 1 / 1000.0
 SECOND_SPACING = 1
 MINUTE_SPACING = 60
 HOUR_SPACING = 3600
@@ -19,17 +19,21 @@ WEEK_SPACING = 7 * DAY_SPACING
 MONTH_SPACING = 30 * DAY_SPACING
 YEAR_SPACING = 365 * DAY_SPACING
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     _epoch = datetime.fromtimestamp(0, timezone.utc)
+
     def utcfromtimestamp(timestamp):
         return _epoch + timedelta(seconds=timestamp)
+
 else:
+
     def utcfromtimestamp(timestamp):
         return datetime.fromtimestamp(timestamp, timezone.utc)
 
-MIN_REGULAR_TIMESTAMP = (datetime(1, 1, 1) - datetime(1970,1,1)).total_seconds()
-MAX_REGULAR_TIMESTAMP = (datetime(9999, 1, 1) - datetime(1970,1,1)).total_seconds()
-SEC_PER_YEAR = 365.25*24*3600
+
+MIN_REGULAR_TIMESTAMP = (datetime(1, 1, 1) - datetime(1970, 1, 1)).total_seconds()
+MAX_REGULAR_TIMESTAMP = (datetime(9999, 1, 1) - datetime(1970, 1, 1)).total_seconds()
+SEC_PER_YEAR = 365.25 * 24 * 3600
 
 
 # The stepper functions provide
@@ -92,9 +96,11 @@ def makeYStepper(stepSize):
 
     return stepper
 
+
 class TickSpec:
-    """ Specifies the properties for a set of date ticks and computes ticks
-    within a given utc timestamp range """
+    """Specifies the properties for a set of date ticks and computes ticks
+    within a given utc timestamp range"""
+
     def __init__(self, spacing, stepper, format, autoSkip=None):
         """
         ============= ==========================================================
@@ -130,17 +136,22 @@ class TickSpec:
     def skipFactor(self, minSpc):
         if self.autoSkip is None or minSpc < self.spacing:
             return 1
-        factors = np.array(self.autoSkip, dtype=np.float64)
-        while True:
-            for f in factors:
-                spc = self.spacing * f
-                if spc > minSpc:
-                    return int(f)
-            factors *= 10
+        minSkipFactor = minSpc / self.spacing
+        multiplier = 1
+        # autoskip is sorted, so autoskip[-1] is the largest value
+        if self.autoSkip[-1] < minSkipFactor:
+            # The exact multiplier needed for multiplier*autoskip[-1] to be equal to minSkipFactor
+            multiplier = minSkipFactor / self.autoSkip[-1]
+            # The closest power of 10 that causes multiplier*autoskip[-1] to be larger than minSkipFactor
+            multiplier = 10 ** np.ceil(np.log10(multiplier))
+        # First index in autoskip*multiplier which gives a larger value than minSkipFactor
+        index = np.searchsorted(self.autoSkip, minSkipFactor / multiplier)
+        return self.autoSkip[index] * multiplier
 
 
 class ZoomLevel:
-    """ Generates the ticks which appear in a specific zoom level """
+    """Generates the ticks which appear in a specific zoom level"""
+
     def __init__(self, tickSpecs, exampleText):
         """
         ============= ==========================================================
@@ -154,7 +165,10 @@ class ZoomLevel:
         self.exampleText = exampleText
 
     def extendTimeRangeForSpacing(
-            self, spacing: int, minVal: int | float, maxVal: int | float,
+        self,
+        spacing: int,
+        minVal: int | float,
+        maxVal: int | float,
     ) -> tuple[int | float, int | float]:
         if spacing < HOUR_SPACING:
             return minVal, maxVal
@@ -164,7 +178,10 @@ class ZoomLevel:
         return extendedMin, extendedMax
 
     def moveTicksToLocalTimeCoords(
-            self, ticks: np.ndarray, spacing: int, skipFactor: int,
+        self,
+        ticks: np.ndarray,
+        spacing: int,
+        skipFactor: int,
     ) -> np.ndarray:
         if len(ticks) == 0:
             return ticks
@@ -208,32 +225,56 @@ class ZoomLevel:
         return valueSpecs
 
 
-YEAR_MONTH_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(YEAR_SPACING, makeYStepper(1), '%Y', autoSkip=[1, 5, 10, 25]),
-    TickSpec(MONTH_SPACING, makeMStepper(1), '%b')
-], "YYYY")
-MONTH_DAY_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(MONTH_SPACING, makeMStepper(1), '%b'),
-    TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), '%d', autoSkip=[1, 5])
-], "MMM")
-DAY_HOUR_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), '%a %d'),
-    TickSpec(HOUR_SPACING, makeSStepper(HOUR_SPACING), '%H:%M', autoSkip=[1, 6])
-], "MMM 00")
-HOUR_MINUTE_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), '%a %d'),
-    TickSpec(MINUTE_SPACING, makeSStepper(MINUTE_SPACING), '%H:%M',
-             autoSkip=[1, 5, 15])
-], "MMM 00")
-HMS_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(SECOND_SPACING, makeSStepper(SECOND_SPACING), '%H:%M:%S',
-             autoSkip=[1, 5, 15, 30])
-], "99:99:99")
-MS_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(MINUTE_SPACING, makeSStepper(MINUTE_SPACING), '%H:%M:%S'),
-    TickSpec(MS_SPACING, makeMSStepper(MS_SPACING), '%S.%f',
-             autoSkip=[1, 5, 10, 25])
-], "99:99:99")
+YEAR_MONTH_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(YEAR_SPACING, makeYStepper(1), "%Y", autoSkip=[1, 5, 10, 25]),
+        TickSpec(MONTH_SPACING, makeMStepper(1), "%b"),
+    ],
+    "YYYY",
+)
+MONTH_DAY_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(MONTH_SPACING, makeMStepper(1), "%b"),
+        TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), "%d", autoSkip=[1, 5]),
+    ],
+    "MMM",
+)
+DAY_HOUR_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), "%a %d"),
+        TickSpec(HOUR_SPACING, makeSStepper(HOUR_SPACING), "%H:%M", autoSkip=[1, 6]),
+    ],
+    "MMM 00",
+)
+HOUR_MINUTE_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), "%a %d"),
+        TickSpec(
+            MINUTE_SPACING, makeSStepper(MINUTE_SPACING), "%H:%M", autoSkip=[1, 5, 15]
+        ),
+    ],
+    "MMM 00",
+)
+HMS_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(
+            SECOND_SPACING,
+            makeSStepper(SECOND_SPACING),
+            "%H:%M:%S",
+            autoSkip=[1, 5, 15, 30],
+        )
+    ],
+    "99:99:99",
+)
+MS_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(MINUTE_SPACING, makeSStepper(MINUTE_SPACING), "%H:%M:%S"),
+        TickSpec(
+            MS_SPACING, makeMSStepper(MS_SPACING), "%S.%f", autoSkip=[1, 5, 10, 25]
+        ),
+    ],
+    "99:99:99",
+)
 
 
 def fromSecsSinceEpoch(timestamp: float | int) -> QDateTime:
@@ -248,8 +289,8 @@ def calculateUtcOffset(timestamp: float | int) -> int:
 
 
 def getPreferredOffsetFromUtc(
-        timestamp: float | int,
-        preferred_offset: int | None = None,
+    timestamp: float | int,
+    preferred_offset: int | None = None,
 ) -> int:
     """Retrieve the utc offset respecting the daylight saving time"""
     if preferred_offset is not None:
@@ -258,8 +299,8 @@ def getPreferredOffsetFromUtc(
 
 
 def adjustTimestampToPreferredUtcOffset(
-        timestamp: float | int,
-        offest: int | None = None,
+    timestamp: float | int,
+    offest: int | None = None,
 ) -> int | float:
     return timestamp - getPreferredOffsetFromUtc(timestamp, offest)
 
@@ -287,8 +328,8 @@ def applyOffsetFromUtc(timestamp: float | int) -> int:
 
 
 def applyOffsetToUtc(
-        timestamp: float | int,
-        preferred_offset: int | None = None,
+    timestamp: float | int,
+    preferred_offset: int | None = None,
 ) -> int:
     delocalized = applyOffsetFromUtc(timestamp)
     return getPreferredOffsetFromUtc(delocalized, preferred_offset)
@@ -309,7 +350,7 @@ class DateAxisItem(AxisItem):
 
     """
 
-    def __init__(self, orientation='bottom', utcOffset=None, **kwargs):
+    def __init__(self, orientation="bottom", utcOffset=None, **kwargs):
         """
         Create a new DateAxisItem.
 
@@ -321,14 +362,16 @@ class DateAxisItem(AxisItem):
         super(DateAxisItem, self).__init__(orientation, **kwargs)
         self.utcOffset = utcOffset
         # Set the zoom level to use depending on the time density on the axis
-        self.zoomLevels = OrderedDict([
-            (np.inf,      YEAR_MONTH_ZOOM_LEVEL),
-            (5 * 3600*24, MONTH_DAY_ZOOM_LEVEL),
-            (6 * 3600,    DAY_HOUR_ZOOM_LEVEL),
-            (15 * 60,     HOUR_MINUTE_ZOOM_LEVEL),
-            (30,          HMS_ZOOM_LEVEL),
-            (1,           MS_ZOOM_LEVEL),
-            ])
+        self.zoomLevels = OrderedDict(
+            [
+                (np.inf, YEAR_MONTH_ZOOM_LEVEL),
+                (5 * 3600 * 24, MONTH_DAY_ZOOM_LEVEL),
+                (6 * 3600, DAY_HOUR_ZOOM_LEVEL),
+                (15 * 60, HOUR_MINUTE_ZOOM_LEVEL),
+                (30, HMS_ZOOM_LEVEL),
+                (1, MS_ZOOM_LEVEL),
+            ]
+        )
         self.autoSIPrefix = False
 
     def tickStrings(self, values, scale, spacing):
@@ -342,20 +385,20 @@ class DateAxisItem(AxisItem):
         except (OverflowError, ValueError, OSError):
             # should not normally happen
             offset = self.utcOffset or 0
-            return ['%g' % ((v-offset)//SEC_PER_YEAR + 1970) for v in values]
+            return ["%g" % ((v - offset) // SEC_PER_YEAR + 1970) for v in values]
 
         formatStrings = []
         for x in dates:
             try:
                 s = x.strftime(tickSpec.format)
-                if '%f' in tickSpec.format:
+                if "%f" in tickSpec.format:
                     # we only support ms precision
                     s = s[:-3]
-                elif '%Y' in tickSpec.format:
-                    s = s.lstrip('0')
+                elif "%Y" in tickSpec.format:
+                    s = s.lstrip("0")
                 formatStrings.append(s)
             except ValueError:  # Windows can't handle dates before 1970
-                formatStrings.append('')
+                formatStrings.append("")
         return formatStrings
 
     def tickValues(self, minVal, maxVal, size):
@@ -379,10 +422,13 @@ class DateAxisItem(AxisItem):
         padding = 10
 
         # Size in pixels a specific tick label will take
-        if self.orientation in ['bottom', 'top']:
+        if self.orientation in ["bottom", "top"]:
+
             def sizeOf(text):
                 return self.fontMetrics.boundingRect(text).width() + padding
+
         else:
+
             def sizeOf(text):
                 return self.fontMetrics.boundingRect(text).height() + padding
 
@@ -392,7 +438,7 @@ class DateAxisItem(AxisItem):
             size = sizeOf(zoomLevel.exampleText)
 
             # Test if zoom level is too fine grained
-            if maximalSpacing/size < density:
+            if maximalSpacing / size < density:
                 break
 
             self.zoomLevel = zoomLevel
@@ -402,17 +448,17 @@ class DateAxisItem(AxisItem):
 
         # Calculate minimal spacing of items on the axis
         size = sizeOf(self.zoomLevel.exampleText)
-        self.minSpacing = density*size
+        self.minSpacing = density * size
 
     def linkToView(self, view):
         """Link this axis to a ViewBox, causing its displayed range to match the visible range of the view."""
-        self._linkToView_internal(view) # calls original linkToView code
+        self._linkToView_internal(view)  # calls original linkToView code
 
         # Set default limits
         _min = MIN_REGULAR_TIMESTAMP
         _max = MAX_REGULAR_TIMESTAMP
 
-        if self.orientation in ['right', 'left']:
+        if self.orientation in ["right", "left"]:
             view.setLimits(yMin=_min, yMax=_max)
         else:
             view.setLimits(xMin=_min, xMax=_max)
@@ -421,8 +467,8 @@ class DateAxisItem(AxisItem):
         # Get font metrics from QPainter
         # Not happening in "paint", as the QPainter p there is a different one from the one here,
         # so changing that font could cause unwanted side effects
-        if self.style['tickFont'] is not None:
-            p.setFont(self.style['tickFont'])
+        if self.style["tickFont"] is not None:
+            p.setFont(self.style["tickFont"])
 
         self.fontMetrics = p.fontMetrics()
 
@@ -497,7 +543,11 @@ def _format_day_timedelta(seconds):
 
 
 DAY_DT_ZOOM_LEVEL = ZoomLevel(
-    [TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), None, autoSkip=[2, 5, 10, 20, 30])],
+    [
+        TickSpec(
+            DAY_SPACING, makeSStepper(DAY_SPACING), None, autoSkip=[2, 5, 10, 20, 30]
+        )
+    ],
     "123 d",
 )
 
@@ -506,7 +556,11 @@ H_DT_ZOOM_LEVEL = ZoomLevel(
     "99:99",
 )
 HM_DT_ZOOM_LEVEL = ZoomLevel(
-    [TickSpec(MINUTE_SPACING, makeSStepper(MINUTE_SPACING), None, autoSkip=[1, 5, 15, 30])],
+    [
+        TickSpec(
+            MINUTE_SPACING, makeSStepper(MINUTE_SPACING), None, autoSkip=[1, 5, 15, 30]
+        )
+    ],
     "99:99",
 )
 
@@ -561,7 +615,9 @@ class TimeDeltaAxisItem(DateAxisItem):
         elif tickSpec.spacing == HOUR_SPACING or tickSpec.spacing == MINUTE_SPACING:
             self.labelUnits = "hour:minute"
             self._updateLabel()
-            return [_format_hms_timedelta(value, show_seconds=False) for value in values]
+            return [
+                _format_hms_timedelta(value, show_seconds=False) for value in values
+            ]
         elif tickSpec.spacing == 1:
             self.labelUnits = "hour:minute:sec"
             self._updateLabel()
