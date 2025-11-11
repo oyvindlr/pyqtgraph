@@ -22,3 +22,4 @@ elif '--pyqt6' in args:
 import pyqtgraph as pg
 pg.systemInfo()
 pytest.main(args)
+
