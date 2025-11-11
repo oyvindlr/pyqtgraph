@@ -93,10 +93,7 @@ def test_evalFunc():
 
 def spinBox_gui_set_value_test(expected, valueText, suffix, locale):
     sb = pg.SpinBox(suffix=suffix, locale=locale)
-def spinBox_gui_set_value_test(expected, valueText, suffix, locale):
-    sb = pg.SpinBox(suffix=suffix, locale=locale)
 
-    sb.lineEdit().setText(f'{valueText}{suffix}')
     sb.lineEdit().setText(f'{valueText}{suffix}')
     sb.editingFinishedEvent()
     assert sb.value() == expected
